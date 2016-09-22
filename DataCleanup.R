@@ -4,8 +4,8 @@ cal <- read.csv('calendar.csv')
 listing <- read.csv('listings.csv')
 review <- read.csv('reviews.csv')
 #Save & Read as Rdata file
-saveRDS(list, file = "listingRdata.rds")
-listing <- readRDS("listingRdata.rds")
+# saveRDS(list, file = "listingRdata.rds")
+# listing <- readRDS("listingRdata.rds")
 
 #Remove dollar signs and turn into integer
 dollarInt <- function(x) {
@@ -16,14 +16,22 @@ PercentageInt <- function(x) {
   as.integer(sub("%", "", x))
 }
 
-columnsDollarNum <- listing[,c("price", "weekly_price", "monthly_price", "cleaning_fee", "security_deposit", "extra_people")]   #Columns to convert
-colsPercentageNum <- listing[,c("host_response_rate", "host_acceptance_rate")]
+#Data must be data.frame
+columnsDollarInt <- listing[,c("price", "weekly_price", "monthly_price", "cleaning_fee", "security_deposit", "extra_people")]   #Columns to convert
+colsPercentageInt <- listing[,c("host_response_rate", "host_acceptance_rate")]
 cleandf1 <- as.data.frame(sapply(columnsDollarInt, dollarInt))
-cleandf2 <- as.data.frame(sapply(colsPercentageNum, PercentageInt))
+cleandf2 <- as.data.frame(sapply(colsPercentageInt, PercentageInt))
 
-finaldf <- cbind(cleandf1, cleandf2)
+finalDF <- cbind(cleandf1, cleandf2)
+
+#Function to replace all the old columns w/ cleaned ones
+for (i in names(finalDF)) {      #replace w/ newest table
+  listing[[i]] <- finalDF[[i]]
+}
+
+
 #Linear Model. Family = poisson because price has poisson shape
 hist(finaldf$price, 1000)
-mod1 = glm(price ~ cleaning_fee + weekly_price + monthly_price + security_deposit + extra_people + host_acceptance_rate + host_response_rate, data = finaldf, family = poisson)
-
+mod1 = glm(price ~ cleaning_fee + weekly_price + monthly_price + security_deposit + extra_people + host_acceptance_rate + host_response_rate + as.factor(cancellation_policy), data = finaldf, family = poisson)
+summary(mod1)  #cleaning_fee and weekly_price closely associated with price. Weekly & monthly prices doesn't explain price well. A positive host_response_rate is associated with price to a slight degree.
 
