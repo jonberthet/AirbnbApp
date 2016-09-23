@@ -29,14 +29,22 @@ for (i in names(finalDF)) {      #replace w/ newest table
   listing[i] <- finalDF[i]
 }
 
+list2 <- cbind(listing, east_northing)
+names(list2)
+
 
 #Linear Model. Family = poisson because price has poisson shape
 hist(listing$price, 1000)
-mod1 = glm(price ~ cleaning_fee + weekly_price + monthly_price + security_deposit + extra_people + host_acceptance_rate + host_response_rate, data = listing, family = poisson)
-plotSummary <- function(model){
-  par(mfrow=c(2,2))
-  plot(model)
-  par(mfrow=c(1,1))
-}
-plotSummary(mod1)  #cleaning_fee and weekly_price closely associated with price. Weekly & monthly prices doesn't explain price well. A positive host_response_rate is associated with price to a slight degree.
+mod1 = glm(price ~ cleaning_fee
+           + weekly_price
+           + monthly_price
+           + security_deposit
+           + extra_people
+           + host_acceptance_rate
+           + host_response_rate,
+           data = listing, family = poisson)
+#linear model summary: modeling price: cleaning_fee and weekly_price closely associated with price. Weekly & monthly prices doesn't explain price well. A positive host_response_rate is associated with price to a slight degree.
+plotSummary(mod1)
+
+
 
