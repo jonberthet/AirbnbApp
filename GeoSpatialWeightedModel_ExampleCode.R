@@ -53,14 +53,12 @@ latlong = "+init=epsg:4326"
 
 
 #####EXAMPLE
-data("DubVoter")
-summary(Dub.voter)
-class(Dub.voter)
+
 
 # gw.ss.bx <- gwss(Dub.voter, vars = c("GenEl2004", "LARent", "Unempl"),kernel = "boxcar", adaptive = TRUE, bw = 48, quantile = TRUE)
 gwssbx <- gwss(df,
                vars = c("price", "weekly_price"),   #"availability_30"
-               kernel = "boxcar",    #bocar relates to un-weighted moving window. bisquare relates to weighted moving window. Also try tricube, gaussian, exponential
+               kernel = "bisquare",    #bocar relates to un-weighted moving window. bisquare relates to weighted moving window. Also try tricube, gaussian, exponential
                adaptive = TRUE,
                bw = 0.15 * nrow(df),    #roughly 15% of df data
                quantile = TRUE)    #median, IQR, and quantile imbalance calculated
@@ -68,13 +66,13 @@ gwssbx <- gwss(df,
 
 map.na = list("SpatialPolygonsRescale",
               layout.north.arrow(),
-              offset = c(400000, 300000),
+              offset = c(100000, 300000),
               scale = 4000,
               col = 1)
 
 map.scale1 <- list("SpatialPolygonsRescale",
                    layout.north.arrow(),
-                   offset = c(400000, 300000),
+                   offset = c(200000, 300000),
                    scale = 4000,
                    col = 1,
                    fill = c("transparent", "blue"))
@@ -83,7 +81,7 @@ map.layout <- list(map.na, map.scale1)
 
 mypalette1 <- brewer.pal(4, "Reds")
 
-X11(width = 10, height = 12)
+X11(width = 12, height = 15)
 spplot(gwssbx$SDF,
        "price_LSD",
        key.space = "right",
