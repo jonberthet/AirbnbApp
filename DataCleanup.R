@@ -43,6 +43,7 @@ mod1 = glm(price ~ cleaning_fee
            + host_acceptance_rate
            + host_response_rate,
            data = listing, family = poisson)
+
 #linear model summary: modeling price: cleaning_fee and weekly_price closely associated with price. Weekly & monthly prices doesn't explain price well. A positive host_response_rate is associated with price to a slight degree.
 plotSummary(mod1)
 
