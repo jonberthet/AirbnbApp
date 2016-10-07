@@ -3,11 +3,10 @@
 
 
 #Get distance matrix for airbnb price data
-library("GWmodel")
-library("rgdal")
-library("RColorBrewer")
-library(maps); library(ggplot2); library(mapproj)
-
+library("GWmodel"); library("rgdal"); library("sp"); library("RColorBrewer");
+library(maps); library(ggplot2); library(mapproj); library("plotly");library("ggmap"); library("shapefiles")
+library(rgdal); library(rworldmap)
+library(data.table)
 data("EWHP")
 head(ewhp)
 
@@ -34,7 +33,7 @@ listLatLon$ID <- 1:nrow(listLatLon)
 data_latlon <- cbind(Latitude =  as.numeric(as.character(listLatLon$latitude)),
                      Longitude = as.numeric(as.character(listLatLon$longitude)),
                      listing[,c("price", "weekly_price", "availability_30")])   #Variables to Use
-data_complete_latlon <- data_latlon[complete.cases(data_latlon),]
+data_complete_latlon <- data_latlon[complete.cases(data_latlon),]         ######USE AS POINTS TO PLOT ON TOP OF POINTS
 
 #Create Spatial DF : Source: https://www.nceas.ucsb.edu/~frazier/RSpatialGuides/OverviewCoordinateReferenceSystems.pdf
 #Latitude / Longitude
@@ -58,8 +57,7 @@ df_EastNorth <- SpatialPointsDataFrame(east_northing[,c(1,2)],
 
 
 
-library(rgdal)
-library(sp)
+
 #Projection:
 projInfo(type = "proj")
 #Datum:
@@ -88,17 +86,19 @@ gwssbx_eastnorth <- gwss(df_EastNorth,
                bw = 0.15 * nrow(df),    #roughly 15% of df data
                quantile = TRUE)    #median, IQR, and quantile imbalance calculated
 
+
+
 gwssbx_latlong <- gwss(df_latlong,
                        vars = c("price", "weekly_price"),   #"availability_30"
-                       kernel = "boxcar",    #bocar relates to un-weighted moving window. bisquare relates to weighted moving window. Also try tricube, gaussian, exponential
+                       #boxcar relates to un-weighted moving window. bisquare relates to weighted moving window. Also try tricube, gaussian, exponential
+                       kernel = "boxcar",
                        adaptive = TRUE,
                        bw = 0.15 * nrow(df),    #roughly 15% of df data
                        quantile = TRUE)    #median, IQR, and quantile imbalance calculated
 
 
-
 #LatLong
-map.na = list("SpatialPolygonsRescale",layout.north.arrow(),offset = c(-77.1, 38.95),scale = 1000,col = 1)
+map.na = list("SpatialPolygonsRescale", layout.north.arrow(),offset = c(-77.1, 38.95),scale = 1000,col = 1)
 map.scale1 <- list("SpatialPolygonsRescale", layout.north.arrow(),offset = c(-77.04, 38.97),scale = 2000,col = 1,fill = c("transparent", "blue"))
 map.scale2 <- list("sp.text",c(-77, 38.85),"0",cex = 0.4,col = 1)
 map.scale3 <- list("sp.text", c(-77,38.85), "5km", cex = 0.9, col = 1)
@@ -112,13 +112,40 @@ mypalette3 <- brewer.pal(6, "Greens")
 # X11(width = 25, height = 25)
 
 #price_LSD : Price variation varies more in northern, southern, and central regions
-spplot(gwssbx_latlong$SDF,   #or gwssbx_latlong
-       "price_LSD",       #LSD = Least Significant Difference
+# ? https://rpubs.com/nickbearman/r-google-map-making
+df_SDF <-setDT(as.data.frame(gwssbx_latlong$SDF), keep.rownames = TRUE)[]  #USE TO PLOT
+df_latlong #Google Maps use sp data
+plot(df_latlong, pch = ".", col = "darkred")   #USES sp data  #WORKS
+
+# map2 <- qmap("Washington", zoom = 10, maptype = 'hybrid')
+# map2 + geom_point(data = df_SDF, aes(x = "Longitude", y = "Latitude"),
+                  color = "red",size = 3, alpha = 0.4)
+
+qmplot(df_SDF$Longitude, df_SDF$Latitude, data = df_SDF, colour = I('red'), size = I(3), darken = 0.3)
+
+mapPoints <- ggmap(map);mapPoints
+gwssbx_latlong$SDF
+
+map2 + spplot(gwssbx_latlong$SDF,   #or gwssbx_latlong
+       "Corr_price.weekly_price",       #LSD = Least Significant Difference
        key.space = "right",
        col.regions = mypalette1,
        cuts = 3,
        main = "GW standard deviations for price (basic)",
        sp.layout = map.layout)
+points(data_complete_latlon$Longitude, data_complete_latlon$Latitude, col = "red", cex = 0.6)
+
+
+
+list.files('~/C:/Users/jberthet001/Desktop/AiA/Airbnb/AirbnbApp', pattern='\\.shp$')
+file.exists('C:/Users/jberthet001/Desktop/AiA/Airbnb/AirbnbApp/district_of_columbia_administrative.shp')
+washDC <- readOGR(dsn=".",layer="district_of_columbia_administrative.shp")
+washDC <- readOGR(dsn=".",layer="cb_2015_us_state_5m.shp")
+
+s <- shapefile(dsn=path.expand("C:/Users/jberthet001/Desktop/AiA/Airbnb/AirbnbApp/district_of_columbia_administrative"), layer = "district_of_columbia_administrative")
+
+
+getwd()
 
 spplot(gwssbx_eastnorth$SDF,   #or gwssbx_latlong
        "price_LSD",       #LSD = Least Significant Difference
