@@ -3,18 +3,11 @@ setwd("C:/Users/jberthet001/Desktop/AiA/Airbnb/AirbnbApp")
 cal <- read.csv('calendar.csv')
 listing <- read.csv('listings.csv')
 review <- read.csv('reviews.csv')
+
+
 #Save & Read as Rdata file
 # saveRDS(list, file = "listingRdata.rds")
-# listing <- readRDS("listingRdata.rds")
-
-#Remove dollar signs and turn into integer
-dollarInt <- function(x) {
-  as.integer(gsub('\\$', '', x))
-}
-
-PercentageInt <- function(x) {
-  as.integer(sub("%", "", x))/100
-}
+# load("listingRdata.rds")
 
 #Data must be data.frame
 columnsDollarInt <- listing[,c("price", "weekly_price", "monthly_price", "cleaning_fee", "security_deposit", "extra_people")]   #Columns to convert
@@ -46,4 +39,3 @@ mod1 = glm(price ~ cleaning_fee
 
 #linear model summary: modeling price: cleaning_fee and weekly_price closely associated with price. Weekly & monthly prices doesn't explain price well. A positive host_response_rate is associated with price to a slight degree.
 plotSummary(mod1)
-

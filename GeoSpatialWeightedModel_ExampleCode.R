@@ -105,8 +105,6 @@ map.scale3 <- list("sp.text", c(-77,38.85), "5km", cex = 0.9, col = 1)
 map.layout <- list(map.na, map.scale1, map.scale2, map.scale3)
 
 
-
-
 mypalette1 <- brewer.pal(9, "Reds")
 mypalette2 <- brewer.pal(5, "Blues")
 mypalette3 <- brewer.pal(6, "Greens")
@@ -151,6 +149,98 @@ spplot(gwssbx_latlong$SDF,
        sp.layout = map.layout)
 
 
+
+#PLot US (No luck w/ DC)
+library("maptools", lib.loc="~/R/win-library/3.2")
+crswgs84=CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
+states = readShapePoly("C:/Users/jberthet001/Desktop/AiA/Airbnb/cb_2015_us_state_5m.shp", proj4string = crswgs84, verbose = TRUE)
+par(mfrow=c(1,1))
+plot(states)
+
+# https://pakillo.github.io/R-GIS-tutorial/
+# http://zevross.com/blog/2014/07/16/mapping-in-r-using-the-ggplot2-package/
+#Check if coordinates exist in map file
+library(rgeos)
+p <- SpatialPoints(list(data_complete_latlon$Longitude, data_complete_latlon$Latitude), proj4string = crswgs84)
+gContains(fdg, pt)
+
 #####PCA
+#GW PCA can assess how effective data dimensionality varies spatially and how the original variables influence each spatially-varying component
+
+#Main challenges: finding scale at which each localised PCA should operate and visualizing & interpreting output.
+#pca basic
 data.scaled <- scale(as.matrix(df_latlong@data))
-df_latlong@data
+pca.basic <- princomp(data.scaled, cor = F)
+(pca.basic$sdev^2 / sum(pca.basic$sdev ^2)) * 100
+pca.basic$loadings
+
+#pca robust: reduces anomalous observations as outputs. Outliers effects are reduced cuz each local covariance matrix is estimated using robust minimum covariance determinant (MCD) estimator, which searches for a subset of h data points that has the smallest determinant for their basic sample covariance matrix. h estimator set to default values: h = 0.75n
+R.Cov <- covMcd(data.scaled, cor=F, alpha = 0.75)
+pca.robust <- princomp(data.scaled, covmat = R.Cov, cor = F)
+pca.robust$sdev^2 / sum(pca.robust$sdev ^2)
+pca.robust$loadings
+
+#Kernel bandwidths for GW PCA found automatically using LOOCV. A LOOCV score is computed for all possible bandwidths and an optimal bandwidth is the smallest CV score found. Good start for a kernel (k) values is arbitrary. But start with bi-square kernel.
+Coords <- as.matrix(cbind(data_complete_latlon$Longitude,
+                          data_complete_latlon$Latitude))
+Data.scaled.spdf <- SpatialPointsDataFrame(Coords,
+                                           as.data.frame(data.scaled))
+bw.gwpca.basic <-bw.gwpca(Data.scaled.spdf,
+                          vars = colnames(Data.scaled.spdf@data),
+                          k = 3,
+                          robust = FALSE,
+                          adaptive = TRUE)
+bw.gwpca.robust <- bw.gwpca(Data.scaled.spdf,
+                            vars = colnames(Data.scaled.spdf@data),
+                            k = 3,   #Number of Principal components to use
+                            robust = TRUE,
+                            adaptive = TRUE)
+#COMPARE
+bw.gwpca.basic
+bw.gwpca.robust
+#CONCLUSION: IF values similar, then similar optimal bandwidths will be used to calibrate the respective basic and robust GW PCA Fits. Very different values shows that optimal bandwidths are very different.
+
+#Now, use gwpca() to get the GW PCA for each gwpca
+gwpca.basic <- gwpca(Data.scaled.spdf,
+                     vars = colnames(Data.scaled.spdf@data),
+                     bw = bw.gwpca.basic,
+                     k = 3,
+                     robust = FALSE,
+                     adaptive = TRUE)
+
+gwpca.robust <- gwpca(Data.scaled.spdf,
+                     vars = colnames(Data.scaled.spdf@data),
+                     bw = bw.gwpca.robust,
+                     k = 3,
+                     robust = TRUE,
+                     adaptive = TRUE)
+
+#PLOT
+#prop.var() finds PTV data, and adds it to long/lat attitude
+prop.var <- function(gwpca.obj, n.components) {
+  return((rowSums(gwpca.obj$var[, 1:n.components])/
+            rowSums(gwpca.obj$var))*100)
+  }
+
+var.gwpca.basic <- ((rowSums(gwpca.basic$var[, 1:3])/rowSums(gwpca.basic$var))*100)
+var.gwpca.robust <- ((rowSums(gwpca.robust$var[, 1:3])/rowSums(gwpca.robust$var))*100)
+
+gwssbx_latlong$var.gwpca.basic <- var.gwpca.basic
+gwssbx_latlong$var.gwpca.robust <- var.gwpca.robust
+
+
+#data must be 'sp' class
+mypalette.4 <-brewer.pal(3, "YlGnBu")
+X11(width = 10,height = 12)
+spplot(gwssbx_latlong,
+       "var.gwpca.basic", key.space = "right",
+          col.regions = mypalette.4, cuts = 3,
+          main = "PTV for local components 1 to 3 (basic GW PCA)",
+          sp.layout = map.layout)
+
+X11(width = 10,height = 12)
+spplot(Dub.voter, "var.gwpca.robust", key.space = "right",
+          col.regions = mypalette.4, cuts = 3,
+          main = "PTV for local components 1 to 3 (robust GW PCA)",
+          sp.layout = map.layout)
+# Figure 5 presents the local PTV
